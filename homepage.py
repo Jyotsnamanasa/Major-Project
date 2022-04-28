@@ -19,6 +19,7 @@ from collections import Iterable
 import datetime
 import smtplib 
 from tkinter import messagebox
+from tkcalendar import Calendar
 from email.mime.multipart import MIMEMultipart 
 
 from email.mime.text import MIMEText 
@@ -250,24 +251,24 @@ def manage():
     scroll_y.pack(side=RIGHT,fill=Y)
     scroll_x.config(command=Student_table.xview)
     scroll_y.config(command=Student_table.yview)
-    Student_table.heading("RollNo",text="RollNo")
-    Student_table.heading("Name",text="Name")
-    Student_table.heading("Branch",text="Branch")
-    Student_table.heading("Year",text="Year")
-    Student_table.heading("Email",text="Email")
-    Student_table.heading("Gender",text="Gender")
-    Student_table.heading("Contact Info",text="Contact Info")
-    Student_table.heading("DOB",text="dob")
+    Student_table.heading("RollNo",anchor=CENTER,text="RollNo")
+    Student_table.heading("Name",anchor=CENTER,text="Name")
+    Student_table.heading("Branch",anchor=CENTER,text="Branch")
+    Student_table.heading("Year",anchor=CENTER,text="Year")
+    Student_table.heading("Email",anchor=CENTER,text="Email")
+    Student_table.heading("Gender",anchor=CENTER,text="Gender")
+    Student_table.heading("Contact Info",anchor=CENTER,text="Contact Info")
+    Student_table.heading("DOB",anchor=CENTER,text="dob")
     
     Student_table['show']="headings"
-    Student_table.column("RollNo",width=150)
-    Student_table.column("Name",width=150)
-    Student_table.column("Branch",width=150)
-    Student_table.column("Year",width=150)
-    Student_table.column("Email",width=150)
-    Student_table.column("Gender",width=100)
-    Student_table.column("Contact Info",width=150)
-    Student_table.column("DOB",width=150)
+    Student_table.column("RollNo",anchor=CENTER,width=150)
+    Student_table.column("Name",anchor=CENTER,width=150)
+    Student_table.column("Branch",anchor=CENTER,width=150)
+    Student_table.column("Year",anchor=CENTER,width=150)
+    Student_table.column("Email",anchor=CENTER,width=150)
+    Student_table.column("Gender",anchor=CENTER,width=100)
+    Student_table.column("Contact Info",anchor=CENTER,width=150)
+    Student_table.column("DOB",anchor=CENTER,width=150)
     
     Student_table.pack(fill=BOTH,expand=1)
     Student_table.bind("<ButtonRelease-1>",get_cursor)
@@ -380,7 +381,7 @@ def update_data():
     conn.commit()
     con1=connect('attendence.db')
     cur1=con1.cursor()
-    cur1.execute("update attendence set Name=?,Branch=?,year=?,Email=? WHERE RollNumber=?",(name_var.get(),branch.get(),year_var.get(),email_var.get(),Roll_No_var.get()))
+    cur1.execute("update attendence set Name=?,Branch=?,year=?,mailid=? WHERE RollNumber=?",(name_var.get(),branch.get(),year_var.get(),email_var.get(),Roll_No_var.get()))
     con1.commit()
     con1.close()
     fetch_data()
@@ -439,8 +440,89 @@ def flatten(lis):
             yield item
   
 
-def samples():
-    pass
+def holidays():
+    global newWindow
+    newWindow = Toplevel(root)
+ 
+    # sets the title of the
+    # Toplevel widget
+    newWindow.title("Add a holiday")
+ 
+    # sets the geometry of toplevel
+    newWindow.geometry("1080x700+10+10")
+    newWindow.maxsize(1080, 700)
+    newWindow.minsize(1080, 700)
+    Manage_Frame=Frame(newWindow,bd=4,relief=RIDGE,bg="mint cream")
+    Manage_Frame.place(x=10,y=10,width=450,height=650)
+    m_title=Label(Manage_Frame,text="Add a holiday",bg="mint cream",fg="black",font=("times new roman",15,"bold"))
+    m_title.pack(padx=20,pady=100)
+    global cal
+    cal = Calendar(Manage_Frame, selectmode = 'day',
+                    year = 2020, month = 5,
+                    day = 22)
+        
+    cal.pack(pady = 20)
+    Button(Manage_Frame, text = "Add Date",command = add_date).pack(pady = 10)
+    
+    
+
+        #detail frame
+    Details_Frame=Frame(newWindow,bd=4,relief=RIDGE,bg="mint cream")
+    Details_Frame.place(x=470,y=10,width=600,height=650)
+    
+    
+    #Table frame
+    global holiday_table
+    Table_Frame=Frame(Details_Frame,bd=4,relief=RIDGE,bg="mint cream")
+    Table_Frame.place(x=10,y=70,width=580,height=550)
+    scroll_x=Scrollbar(Table_Frame,orient=HORIZONTAL)
+    scroll_y=Scrollbar(Table_Frame,orient=VERTICAL)
+    holiday_table=ttk.Treeview(Table_Frame,columns=("Day","Month","Year"),xscrollcommand=scroll_x.set,yscrollcommand=scroll_y.set)
+    scroll_x.pack(side=BOTTOM,fill=X)
+    scroll_y.pack(side=RIGHT,fill=Y)
+    scroll_x.config(command=holiday_table.xview)
+    scroll_y.config(command=holiday_table.yview)
+    holiday_table.heading("Day",anchor=CENTER,text="Day")
+    holiday_table.heading("Month",anchor=CENTER,text="Month")
+    holiday_table.heading("Year",anchor=CENTER,text="Year")
+    
+    
+    holiday_table['show']="headings"
+    holiday_table.column("Day",anchor=CENTER,width=150)
+    holiday_table.column("Month",anchor=CENTER,width=150)
+    holiday_table.column("Year",anchor=CENTER,width=150)
+    
+    
+    holiday_table.pack(fill=BOTH,expand=1)
+
+    fetch_holiday_data()
+
+
+    
+def fetch_holiday_data():
+    conn=connect("holiday.db")
+    cur=conn.cursor()
+
+    cur.execute("SELECT * FROM holiday")
+    rows=cur.fetchall()
+    if len(rows)!=0:
+        holiday_table.delete(*holiday_table.get_children())
+        for row in rows:
+            holiday_table.insert('',END,values=row)
+        conn.commit()
+    conn.close()
+    
+def add_date():
+    c=cal.get_date().split("/")
+    con2=connect('holiday.db')
+    cur2=con2.cursor()
+    cur2.execute("insert into holiday values(?,?,?);",(c[1],c[0],c[2]))
+    con2.commit()
+    con2.close()
+    messagebox.showinfo("success","Date entered successfully!",parent=newWindow)
+    fetch_holiday_data()
+    
+    
 def detect():
     embeddingFile = "output/embeddings.pickle"
     embeddingModel = "openface_nn4.small2.v1.t7"
@@ -540,11 +622,22 @@ def changepassword():
     frame1.pack_forget()
     frame4.pack(pady="165")
 def report():
+    newWindow=Toplevel(root)
+    newWindow.geometry("500x250+250+250")
+    
+    check_lbl=Label(newWindow,text="Which kind of report do you want to see?",bg="mint cream",fg="black",font=("times new roman",15,"bold"))
+    check_lbl.place(x=90,y=50)
+    combo_check=ttk.Combobox(newWindow,textvariable=check_var,font=("times new roman",13,"bold"),state="readonly")
+    combo_check['values']=("Daily","Monthly")
+    combo_check.place(x=160,y=100)
+    Button(newWindow,text="Submit",command=get_frame).place(x=230,y=150)
+def get_frame():
     pass
 def train():
     frame1.pack_forget()
     frame2.pack()
 def train_data():
+    content=Label(frame2,text="Training a Model....",font=("times new roman", 20, "bold")).place(x=350,y=400)
     progress['value'] = 20
     root.update_idletasks()
     time.sleep(1)
@@ -658,6 +751,7 @@ def train_data():
     time.sleep(1)
     progress['value'] = 100
     time.sleep(1)
+    content=Label(frame2,text="Training Completed Successfully!",font=("times new roman", 20, "bold")).place(x=350,y=400)
     messagebox.showinfo("Success","Training completed Successfully!")
     progress['value']=0
     frame2.pack_forget()
@@ -691,6 +785,11 @@ cur=con.cursor()
 cur.execute("CREATE TABLE IF NOT EXISTS student(RollNo text Primary key,Name text NOT NULL,Branch text NOT NULL,Year text NOT NULL, Email text NOT NULL,Gender text NOT NULL,Contact text NOT NULL,DateOfBirth text NOT NULL); ")
 con.commit()
 con.close() 
+con2=connect('holiday.db')
+cur2=con2.cursor()
+cur2.execute("CREATE TABLE IF NOT EXISTS holiday(date_holiday int NOT NULL,month int NOT NULL,year int NOT NULL)")
+con2.commit()
+con2.close()
 
 con1=connect('attendence.db')
 cur1=con1.cursor()
@@ -720,6 +819,7 @@ search_by=StringVar()
 search_txt=StringVar()
 branch=StringVar()
 year_var=StringVar()
+check_var=StringVar()
 
 #login Page Begin
 
@@ -787,11 +887,11 @@ photo5=ImageTk.PhotoImage(photo5)
 button5=Button(frame1, text="Face Detection", image=photo5, compound=TOP, font=(
     "times new roman", 15, "bold"), command=detect)
 button5.grid(row=2, column=0, padx=30, pady=15)
-photo6=Image.open("GUI/photosamples.jpg")
+photo6=Image.open("GUI/holiday.jpg")
 photo6=photo6.resize((200, 200), Image.ANTIALIAS)
 photo6=ImageTk.PhotoImage(photo6)
-button6=Button(frame1, text="Photo Samples", image=photo6, compound=TOP, font=(
-    "times new roman", 15, "bold"), command=samples)
+button6=Button(frame1, text="Holidays", image=photo6, compound=TOP, font=(
+    "times new roman", 15, "bold"), command=holidays)
 button6.grid(row=2, column=1, padx=30, pady=15)
 photo7=Image.open("GUI/aboutdeveloper.jpg")
 photo7=photo7.resize((200, 200), Image.ANTIALIAS)
@@ -812,7 +912,7 @@ button8.grid(row=2, column=3, padx=30, pady=15)
 
 
 #Training Page Begin
-
+global content
 frame2=Frame(root)
 bg1=Image.open("GUI/face.jpg")
 image1=bg1.resize((1080,700), Image.ANTIALIAS)
@@ -825,6 +925,8 @@ trainbtn.place(x=400,y=200)
 progress = ttk.Progressbar(frame2,orient='horizontal',mode='determinate',length=500)
 # place the progressbar
 progress.place(x=300,y=350)
+
+
 
 
 
@@ -865,11 +967,8 @@ clearbtn.grid(row=5,column=1)
 
 #change Password Page End
 
+
 # Execute tkinter
 root.mainloop()
 
-current_time = datetime.datetime.now()
-
-if current_time.hour==18 and current_time.minute==00:
-    sendMail()
     
