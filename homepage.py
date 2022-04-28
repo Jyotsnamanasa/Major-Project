@@ -327,17 +327,22 @@ def add_students():
     else:
         conn=connect("student.db")
         cur=conn.cursor()
-        cur.execute("insert into student values(?,?,?,?,?,?,?,?)",(Roll_No_var.get(),name_var.get(),branch.get(),year_var.get(),email_var.get(),gender_var.get(),contact_var.get(),dob_var.get()))
-        conn.commit()
-        con1=connect('attendence.db')
-        cur1=con1.cursor()
-        cur1.execute("INSERT INTO attendence values(?,?,?,?,?,?)",(Roll_No_var.get(),name_var.get(),branch.get(),year_var.get(),email_var.get(),0))
-        con1.commit()
-        con1.close()
-        fetch_data()
-        clear()
-        conn.close()
-        messagebox.showinfo("Success","Successfully added",parent=newWindow)
+        cur.execute("SELECT RollNo from student")
+        p=cur.fetchall()
+        if Roll_No_var.get() in p[0]:
+            messagebox.showerror("Error",Roll_No_var.get()+" is already available",parent=newWindow)
+        else:
+            cur.execute("insert into student values(?,?,?,?,?,?,?,?)",(Roll_No_var.get(),name_var.get(),branch.get(),year_var.get(),email_var.get(),gender_var.get(),contact_var.get(),dob_var.get()))
+            conn.commit()
+            con1=connect('attendance.db')
+            cur1=con1.cursor()
+            cur1.execute("INSERT INTO attendance values(?,?,?,?,?,?,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0)",(Roll_No_var.get(),name_var.get(),branch.get(),year_var.get(),email_var.get(),0))
+            con1.commit()
+            con1.close()
+            fetch_data()
+            clear()
+            conn.close()
+            messagebox.showinfo("Success","Successfully added",parent=newWindow)
 def fetch_data():
     conn=connect("student.db")
     cur=conn.cursor()
@@ -379,9 +384,9 @@ def update_data():
     cur=conn.cursor()
     cur.execute("update student set Name=?,Branch=?,year=?,Email=?,Gender=?,Contact=?,DateOfBirth=? WHERE RollNo=?",(name_var.get(),branch.get(),year_var.get(),email_var.get(),gender_var.get(),contact_var.get(),dob_var.get(),Roll_No_var.get()))
     conn.commit()
-    con1=connect('attendence.db')
+    con1=connect('attendance.db')
     cur1=con1.cursor()
-    cur1.execute("update attendence set Name=?,Branch=?,year=?,mailid=? WHERE RollNumber=?",(name_var.get(),branch.get(),year_var.get(),email_var.get(),Roll_No_var.get()))
+    cur1.execute("update attendance set Name=?,Branch=?,year=?,mailid=? WHERE RollNumber=?",(name_var.get(),branch.get(),year_var.get(),email_var.get(),Roll_No_var.get()))
     con1.commit()
     con1.close()
     fetch_data()
@@ -396,6 +401,13 @@ def delete_data():
     
     conn.commit()
     conn.close()
+    conn1=connect("attendance.db")
+    cur1=conn1.cursor()
+    sql_query=f"delete FROM attendance where RollNo=\'{Roll_No_var.get()}\'"
+    cur1.execute(sql_query)
+    
+    conn1.commit()
+    conn1.close()
     clear()
     fetch_data()
     messagebox.showinfo("Success","Successfully Deleted",parent=newWindow)
@@ -600,16 +612,34 @@ def detect():
                             NAMES.append(name)
                         #print(Roll_Number)'''
                 if int(proba*100)>80:
-                    text = "if your roll number is {} , then press enter".format(name)
+                    text = "if your roll number is {} , then press y".format(name)
                     y = startY - 10 if startY - 10 > 10 else startY + 10
                     cv2.rectangle(frame, (startX, startY), (endX, endY),
                             (0, 0, 255), 2)
                     cv2.putText(frame, text, (startX, y),
                             cv2.FONT_HERSHEY_SIMPLEX, 0.45, (0, 0, 255), 2)
         cv2.imshow("Frame", frame)
-        def show(key):
+        
+        '''
+        # Collect all event until released
+        with Listener(on_press = show) as listener:   
+            listener.join()'''
             
-            print('\nYou Entered {0}'.format( key))
+        key=cv2.waitKey(0) &0xFF  
+        if key==ord("y"):
+            con1=connect('attendance.db')
+            cur1=con1.cursor()
+            string2="date"+str(current_time.date)
+            string1="update attendance set "+string2+"=1 total=total+1 where RollNumber="+name
+            cur1.execute(string1)
+            con1.commit()
+            con1.close()
+            break
+    cam.release()
+    cv2.destroyAllWindows()
+def show(key):
+            
+            #print('\nYou Entered {0}'.format( key))
         
             if key == Key.enter:
                 # Stop listener
@@ -620,15 +650,6 @@ def detect():
                 con1.commit()
                 con1.close()
                 return False
-  
-        # Collect all event until released
-        with Listener(on_press = show) as listener:   
-            listener.join()
-            
-        if key==Key.enter:
-            break
-    cam.release()
-    cv2.destroyAllWindows()
 def changepassword():   
     frame1.pack_forget()
     frame4.pack(pady="165")
@@ -646,7 +667,7 @@ def report():
 def get_frame():
     newWindow.destroy()
     newWindow1=Toplevel(root)
-    newWindow1.title("Attendence Report")
+    newWindow1.title("attendance Report")
  
     # sets the geometry of toplevel
     newWindow1.geometry("1080x700+10+10")
@@ -728,7 +749,8 @@ def get_report():
     if check_var.get()=="Daily": 
         conn=connect("attendance.db")
         cur=conn.cursor()
-        string1="SELECT RollNumber,Name,Branch,Year,mailid,"+date_var.get()+" FROM attendance"
+        string2="date"+date_var.get()
+        string1="SELECT RollNumber,Name,Branch,Year,mailid,"+string2+" FROM attendance"
         cur.execute(string1)
         rows=cur.fetchall()
     else:
@@ -750,7 +772,8 @@ def get_csv_file():
         file1=date_var.get()+"-"+str(current_time.month)+"-"+str(current_time.year)+".csv"
         conn=connect("attendance.db")
         cur=conn.cursor()
-        string1="SELECT RollNumber,Name,Branch,Year,mailid,"+date_var.get()+" FROM attendance"
+        string2="date"+date_var.get()
+        string1="SELECT RollNumber,Name,Branch,Year,mailid,"+string2+" FROM attendance"
         cur.execute(string1)
         rows=cur.fetchall()
         
@@ -904,13 +927,20 @@ def Login():
     global login_by
     lid1=lid.get()
     lpass1=lpass.get()
-    print(lid.get(),lpass.get())
-    if(lid1==Admin_id and lpass1==Admin_pass):
+    print(lid1,lpass1)
+    con3=connect('login.db')
+    cur3=con3.cursor()
+    cur3.execute("select * from login")
+    p=cur3.fetchall()
+    p
+    print(p[0][0],p[0][1])
+    con3.commit()
+    con3.close()
+    if(lid1==p[0][0]and lpass1==p[0][1]):
         login_by="Admin"
         Proceed_menu()
     else:
-        login_by=""
-        Proceed_menu()
+        messagebox.showerror("Invalid Login","Incorrect userId or Password")
 def Proceed_menu():
     f_login.pack_forget()
     frame1.pack(pady=20)
@@ -930,7 +960,7 @@ con2.close()
 
 con1=connect('attendance.db')
 cur1=con1.cursor()
-cur1.execute("CREATE TABLE IF NOT EXISTS attendance(RollNumber text PRIMARY KEY,Name text NOT NULL,Branch text NOT NULL,Year text NOT NULL, mailid text NOT NULL,`1` int default 0,`2` int default 0,`3` int default 0,`4` int default 0,`5` int default 0,`6` int default 0,`7` int default 0,`8` int default 0,`9` int default 0,`10` int default 0,`11` int default 0,`12` int default 0,`13` int default 0,`14` int default 0,`15` int default 0,`16` int default 0,`17` int default 0,`18` int default 0,`19` int default 0,`20` int default 0,`21` int default 0,`22` int default 0,`23` int default 0,`24` int default 0,`25` int default 0,`26` int default 0,`27` int default 0,`28` int default 0,`29` int default 0,`30` int default 0,`31` int default 0,total int default 0);")
+cur1.execute("CREATE TABLE IF NOT EXISTS attendance(RollNumber text PRIMARY KEY,Name text NOT NULL,Branch text NOT NULL,Year text NOT NULL, mailid text NOT NULL,date1 int default 0,date2 int default 0,date3 int default 0,date4 int default 0,date5 int default 0,date6 int default 0,date7 int default 0,date8 int default 0,date9 int default 0,date10 int default 0,date11 int default 0,date12 int default 0,date13 int default 0,date14 int default 0,date15 int default 0,date16 int default 0,date17 int default 0,date18 int default 0,date19 int default 0,date20 int default 0,date21 int default 0,date22 int default 0,date23 int default 0,date24 int default 0,date25 int default 0,date26 int default 0,date27 int default 0,date28 int default 0,date29 int default 0,date30 int default 0,date31 int default 0,total int default 0);")
 con1.commit()
 con1.close()
 con1=connect('attendance_month.db')
@@ -938,6 +968,11 @@ cur1=con1.cursor()
 cur1.execute("CREATE TABLE IF NOT EXISTS attendance_month(RollNumber text PRIMARY KEY,Name text NOT NULL,Branch text NOT NULL,Year text NOT NULL, mailid text NOT NULL,Jan int default 0,Feb int default 0,March int default 0,April int default 0,May int default 0,June int default 0,July int default 0,Aug int default 0,Sept int default 0,Oct int default 0,Nov int default 0,Dec int default 0);")
 con1.commit()
 con1.close()
+con3=connect('login.db')
+cur3=con3.cursor()
+cur3.execute("CREATE TABLE IF NOT EXISTS login(UserName text PRIMARY KEY, Passwd text NOT NULL)")
+con3.commit()
+con3.close()
 
 root=Tk()
 root.title("Face Attendance Management System")
@@ -1016,7 +1051,7 @@ button2.grid(row=1, column=1, padx=30, pady=15)
 photo3=Image.open("GUI/timetable.png")
 photo3=photo3.resize((200, 200), Image.ANTIALIAS)
 photo3=ImageTk.PhotoImage(photo3)
-button3=Button(frame1, text="Attendence Report", image=photo3,
+button3=Button(frame1, text="attendance Report", image=photo3,
                compound=TOP, font=("times new roman", 15, "bold"), command=report)
 button3.grid(row=1, column=2, padx=30, pady=15)
 photo4=Image.open("GUI/passwordchange.jpg")
@@ -1115,4 +1150,3 @@ clearbtn.grid(row=5,column=1)
 # Execute tkinter
 root.mainloop()
 
-    
