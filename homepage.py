@@ -27,7 +27,7 @@ from email.mime.text import MIMEText
 from email.mime.base import MIMEBase 
 
 from email import encoders 
-
+from pynput.keyboard import Key, Listener
 
 def sendMail():
         
@@ -545,20 +545,17 @@ def detect():
     box = []
     print("[INFO] starting video stream...")
     cam = cv2.VideoCapture(0)
-    time.sleep(2.0)
+    
 
     while True:
         _, frame = cam.read()
         frame = imutils.resize(frame, width=600)
         (h, w) = frame.shape[:2]
-        imageBlob = cv2.dnn.blobFromImage(
-            cv2.resize(frame, (300, 300)), 1.0, (300, 300),
-            (104.0, 177.0, 123.0), swapRB=False, crop=False)
+        imageBlob = cv2.dnn.blobFromImage(cv2.resize(frame, (300, 300)), 1.0, (300, 300),(104.0, 177.0, 123.0), swapRB=False, crop=False)
 
         detector.setInput(imageBlob)
         detections = detector.forward()
-        NAMES=[]
-        ROLL_NUMBERS=[]
+        
         for i in range(0, detections.shape[2]):
 
             confidence = detections[0, 0, i, 2]
@@ -582,7 +579,7 @@ def detect():
                 j = np.argmax(preds)
                 proba = preds[j]
                 name = le.classes_[j]
-                with open('student.csv', 'r') as csvFile:
+                '''with open('student.csv', 'r') as csvFile:
                     reader = csv.reader(csvFile)
                     for row in reader:
                         box = np.append(box, row)
@@ -601,27 +598,42 @@ def detect():
                         if Roll_Number not in ROLL_NUMBERS:
                             ROLL_NUMBERS.append(Roll_Number)
                             NAMES.append(name)
-                        #print(Roll_Number)
-
-                text = "{} : {} : {:.2f}%".format(name, Roll_Number, proba * 100)
-                y = startY - 10 if startY - 10 > 10 else startY + 10
-                cv2.rectangle(frame, (startX, startY), (endX, endY),
+                        #print(Roll_Number)'''
+                if int(proba*100)>80:
+                    text = "if your roll number is {} , then press enter".format(name)
+                    y = startY - 10 if startY - 10 > 10 else startY + 10
+                    cv2.rectangle(frame, (startX, startY), (endX, endY),
                             (0, 0, 255), 2)
-                cv2.putText(frame, text, (startX, y),
+                    cv2.putText(frame, text, (startX, y),
                             cv2.FONT_HERSHEY_SIMPLEX, 0.45, (0, 0, 255), 2)
         cv2.imshow("Frame", frame)
-        key = cv2.waitKey(1) & 0xFF
-        if key == 27:
-            for i in range(len(ROLL_NUMBERS)):
-                print(NAMES[i],ROLL_NUMBERS[i])
+        def show(key):
+            
+            print('\nYou Entered {0}'.format( key))
+        
+            if key == Key.enter:
+                # Stop listener
+                con1=connect('attendance.db')
+                cur1=con1.cursor()
+                string1="update attendance set "+current_time.date+"=1 where RollNumber="+name
+                cur1.execute(string1)
+                con1.commit()
+                con1.close()
+                return False
+  
+        # Collect all event until released
+        with Listener(on_press = show) as listener:   
+            listener.join()
+            
+        if key==Key.enter:
             break
-
     cam.release()
     cv2.destroyAllWindows()
 def changepassword():   
     frame1.pack_forget()
     frame4.pack(pady="165")
 def report():
+    global newWindow
     newWindow=Toplevel(root)
     newWindow.geometry("500x250+250+250")
     
@@ -632,7 +644,132 @@ def report():
     combo_check.place(x=160,y=100)
     Button(newWindow,text="Submit",command=get_frame).place(x=230,y=150)
 def get_frame():
-    pass
+    newWindow.destroy()
+    newWindow1=Toplevel(root)
+    newWindow1.title("Attendence Report")
+ 
+    # sets the geometry of toplevel
+    newWindow1.geometry("1080x700+10+10")
+    newWindow1.minsize(1080,700)
+    newWindow1.maxsize(1080,700)
+    Details_Frame=Frame(newWindow1,bd=4,relief=RIDGE,bg="mint cream")
+    Details_Frame.place(x=10,y=10,width=1040,height=650)
+    if check_var.get()=="Daily":
+        
+        
+        lbl_name=Label(Details_Frame,text="Select date",bg="mint cream",fg="black",font=("times new roman",15,"bold"))
+        lbl_name.grid(row=0,column=0,pady=10,padx=5,sticky="w")
+       
+
+        
+        combo_branch=ttk.Combobox(Details_Frame,textvariable=date_var,font=("times new roman",15,"bold"),state="readonly")
+        combo_branch['values']=("1","2","3","4","5","6","7","8","9","10","11","12","13","14","15","16","17","18","19","20","21","22","23","24","25","26","27","28","29","30","31")
+        combo_branch.grid(row=0,column=1,padx=5,pady=10,sticky="w")
+
+    else:
+          
+        lbl_name=Label(Details_Frame,text="Select date",bg="mint cream",fg="black",font=("times new roman",15,"bold"))
+        lbl_name.grid(row=0,column=0,pady=10,padx=5,sticky="w")
+       
+
+        
+        combo_branch=ttk.Combobox(Details_Frame,textvariable=month_var,font=("times new roman",15,"bold"),state="readonly")
+        combo_branch['values']=("Jan","Feb","March","April","May","June","July","Aug","Sept","Oct","Nov","Dec")
+        combo_branch.grid(row=0,column=1,padx=5,pady=10,sticky="w")
+
+
+
+    
+    addbtn=Button(Details_Frame,text="Get Report",font=("times new roman",12,"bold"),width=10,bg="green",fg="white",command=get_report).grid(row=0,column=3,padx=5,pady=10)
+    updatebtn=Button(Details_Frame,text="Get CSV file",font=("times new roman",12,"bold"),bg="green",fg="white",width=10,command=get_csv_file).grid(row=0,column=4,padx=5,pady=10)
+
+        
+
+            #detail frame
+        
+         
+    
+    #Table frame
+    global Attendance_table
+    Table_Frame=Frame(Details_Frame,bd=4,relief=RIDGE,bg="mint cream")
+    Table_Frame.place(x=10,y=70,width=1000,height=550)
+    scroll_x=Scrollbar(Table_Frame,orient=HORIZONTAL)
+    scroll_y=Scrollbar(Table_Frame,orient=VERTICAL)
+    Attendance_table=ttk.Treeview(Table_Frame,columns=("RollNo","Name","Branch","Year","Email","Attendance"),xscrollcommand=scroll_x.set,yscrollcommand=scroll_y.set)
+    scroll_x.pack(side=BOTTOM,fill=X)
+    scroll_y.pack(side=RIGHT,fill=Y)
+    scroll_x.config(command=Attendance_table.xview)
+    scroll_y.config(command=Attendance_table.yview)
+    Attendance_table.heading("RollNo",anchor=CENTER,text="RollNo")
+    Attendance_table.heading("Name",anchor=CENTER,text="Name")
+    Attendance_table.heading("Branch",anchor=CENTER,text="Branch")
+    Attendance_table.heading("Year",anchor=CENTER,text="Year")
+    Attendance_table.heading("Email",anchor=CENTER,text="Email")
+    Attendance_table.heading("Attendance",anchor=CENTER,text="Attendance")
+
+    
+    Attendance_table['show']="headings"
+    Attendance_table.column("RollNo",anchor=CENTER,width=150)
+    Attendance_table.column("Name",anchor=CENTER,width=150)
+    Attendance_table.column("Branch",anchor=CENTER,width=150)
+    Attendance_table.column("Year",anchor=CENTER,width=150)
+    Attendance_table.column("Email",anchor=CENTER,width=150)
+    Attendance_table.column("Attendance",anchor=CENTER,width=100)
+
+    
+    Attendance_table.pack(fill=BOTH,expand=1)
+    
+    
+
+        
+        
+    
+def get_report():
+    if check_var.get()=="Daily": 
+        conn=connect("attendance.db")
+        cur=conn.cursor()
+        string1="SELECT RollNumber,Name,Branch,Year,mailid,"+date_var.get()+" FROM attendance"
+        cur.execute(string1)
+        rows=cur.fetchall()
+    else:
+        conn=connect("attendance_month.db")
+        cur=conn.cursor()
+        string1="SELECT RollNumber,Name,Branch,Year,mailid,"+month_var.get()+" FROM attendance_month"
+        cur.execute(string1)
+        rows=cur.fetchall()
+        
+    if len(rows)!=0:
+        Attendance_table.delete(*Attendance_table.get_children())
+        for row in rows:
+            Attendance_table.insert('',END,values=row)
+        conn.commit()
+    conn.close()
+def get_csv_file():
+    get_report()
+    if check_var.get()=="Daily":
+        file1=date_var.get()+"-"+str(current_time.month)+"-"+str(current_time.year)+".csv"
+        conn=connect("attendance.db")
+        cur=conn.cursor()
+        string1="SELECT RollNumber,Name,Branch,Year,mailid,"+date_var.get()+" FROM attendance"
+        cur.execute(string1)
+        rows=cur.fetchall()
+        
+       
+        
+    else:
+        file1=month_var.get()+"-"+str(current_time.year)+".csv"
+        conn=connect("attendance_month.db")
+        cur=conn.cursor()
+        string1="SELECT RollNumber,Name,Branch,Year,mailid,"+month_var.get()+" FROM attendance_month"
+        cur.execute(string1)
+        rows=cur.fetchall()
+    with open(file1, 'w') as f:
+
+        writer = csv.writer(f)
+
+        for row in rows:
+            writer.writerow(row)
+    f.close()
 def train():
     frame1.pack_forget()
     frame2.pack()
@@ -791,9 +928,14 @@ cur2.execute("CREATE TABLE IF NOT EXISTS holiday(date_holiday int NOT NULL,month
 con2.commit()
 con2.close()
 
-con1=connect('attendence.db')
+con1=connect('attendance.db')
 cur1=con1.cursor()
-cur1.execute("CREATE TABLE IF NOT EXISTS attendence(RollNumber text PRIMARY KEY,Name text NOT NULL,Branch text NOT NULL,Year text NOT NULL, mailid text NOT NULL,attendence int);")
+cur1.execute("CREATE TABLE IF NOT EXISTS attendance(RollNumber text PRIMARY KEY,Name text NOT NULL,Branch text NOT NULL,Year text NOT NULL, mailid text NOT NULL,`1` int default 0,`2` int default 0,`3` int default 0,`4` int default 0,`5` int default 0,`6` int default 0,`7` int default 0,`8` int default 0,`9` int default 0,`10` int default 0,`11` int default 0,`12` int default 0,`13` int default 0,`14` int default 0,`15` int default 0,`16` int default 0,`17` int default 0,`18` int default 0,`19` int default 0,`20` int default 0,`21` int default 0,`22` int default 0,`23` int default 0,`24` int default 0,`25` int default 0,`26` int default 0,`27` int default 0,`28` int default 0,`29` int default 0,`30` int default 0,`31` int default 0,total int default 0);")
+con1.commit()
+con1.close()
+con1=connect('attendance_month.db')
+cur1=con1.cursor()
+cur1.execute("CREATE TABLE IF NOT EXISTS attendance_month(RollNumber text PRIMARY KEY,Name text NOT NULL,Branch text NOT NULL,Year text NOT NULL, mailid text NOT NULL,Jan int default 0,Feb int default 0,March int default 0,April int default 0,May int default 0,June int default 0,July int default 0,Aug int default 0,Sept int default 0,Oct int default 0,Nov int default 0,Dec int default 0);")
 con1.commit()
 con1.close()
 
@@ -820,7 +962,9 @@ search_txt=StringVar()
 branch=StringVar()
 year_var=StringVar()
 check_var=StringVar()
-
+date_var=StringVar()
+month_var=StringVar()
+current_time = datetime.datetime.now()
 #login Page Begin
 
 
