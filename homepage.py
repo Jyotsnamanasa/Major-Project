@@ -1,3 +1,5 @@
+# Packages to be imported
+
 from tkinter import *
 from tkinter import ttk
 from tokenize import String
@@ -125,9 +127,12 @@ def sendMail():
         print("Done!") 
 
 def logout():
-    frame1.pack_forget()
-    messagebox.showinfo("Success","LogOut Successful")
-    f_login.pack(pady="165")
+    p=messagebox.askquestion("LogOut","Do you really want to logout?")
+    #print(p)
+    if p=="yes":
+        frame1.pack_forget()
+        messagebox.showinfo("Success","LogOut Successful")
+        f_login.pack(pady="165")
 def passChange():
     con=connect('login.db')
 
@@ -138,6 +143,8 @@ def passChange():
     
     if p[1]==oldPass.get() and newpass.get()==confirmpass.get():
         cur.execute("update login set Passwd=? WHERE UserName=?",(confirmpass.get(),p[0]))
+    else:
+        message.showerror("Mismatch","Please enter proper values")
     con.commit()
     con.close()
     messagebox.showinfo("Success","Password changed Successfully!")
@@ -283,8 +290,8 @@ def collect_data():
     if sub_data=="":
         messagebox.showerror("Error","Roll number feild should not be empty!",parent=newWindow)
     else:
-        path1 = os.path.abspath(os.path.join(dataset, sub_data1))
-        path = os.path.abspath(os.path.join(path1, sub_data))
+        #path1 = os.path.abspath(os.path.join(dataset, sub_data1))
+        path = os.path.abspath(os.path.join(dataset, sub_data))
         if not os.path.isdir(path):
             os.mkdir(path)
         cam = cv2.VideoCapture(0)
@@ -329,20 +336,32 @@ def add_students():
         cur=conn.cursor()
         cur.execute("SELECT RollNo from student")
         p=cur.fetchall()
-        if Roll_No_var.get() in p[0]:
-            messagebox.showerror("Error",Roll_No_var.get()+" is already available",parent=newWindow)
+        flag=0
+        if len(p)>0 :
+            name=[]
+            for i in p:
+                name.append(i[0])
+            print(name)
+            
+            if Roll_No_var.get() in name:
+                messagebox.showerror("Error",Roll_No_var.get()+" is already available",parent=newWindow)
+            else:
+                flag=1
         else:
-            cur.execute("insert into student values(?,?,?,?,?,?,?,?)",(Roll_No_var.get(),name_var.get(),branch.get(),year_var.get(),email_var.get(),gender_var.get(),contact_var.get(),dob_var.get()))
-            conn.commit()
-            con1=connect('attendance.db')
-            cur1=con1.cursor()
-            cur1.execute("INSERT INTO attendance values(?,?,?,?,?,?,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0)",(Roll_No_var.get(),name_var.get(),branch.get(),year_var.get(),email_var.get(),0))
-            con1.commit()
-            con1.close()
-            fetch_data()
-            clear()
-            conn.close()
-            messagebox.showinfo("Success","Successfully added",parent=newWindow)
+            flag=1
+        if(flag==1):
+                cur.execute("insert into student values(?,?,?,?,?,?,?,?)",(Roll_No_var.get(),name_var.get(),branch.get(),year_var.get(),email_var.get(),gender_var.get(),contact_var.get(),dob_var.get()))
+                conn.commit()
+                con1=connect('attendance.db')
+                cur1=con1.cursor()
+                cur1.execute("INSERT INTO attendance values(?,?,?,?,?,?,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0)",(Roll_No_var.get(),name_var.get(),branch.get(),year_var.get(),email_var.get(),0))
+                con1.commit()
+                con1.close()
+                fetch_data()
+                clear()
+                conn.close()
+                messagebox.showinfo("Success","Successfully added",parent=newWindow)
+                
 def fetch_data():
     conn=connect("student.db")
     cur=conn.cursor()
@@ -470,8 +489,8 @@ def holidays():
     m_title.pack(padx=20,pady=100)
     global cal
     cal = Calendar(Manage_Frame, selectmode = 'day',
-                    year = 2020, month = 5,
-                    day = 22)
+                    year = 2022, month = 5,
+                    day = 1)
         
     cal.pack(pady = 20)
     Button(Manage_Frame, text = "Add Date",command = add_date).pack(pady = 10)
@@ -613,24 +632,29 @@ def detect():
                         #print(Roll_Number)'''
                 if int(proba*100)>80:
                     text = "if your roll number is {} , then press y".format(name)
-                    y = startY - 10 if startY - 10 > 10 else startY + 10
-                    cv2.rectangle(frame, (startX, startY), (endX, endY),
-                            (0, 0, 255), 2)
-                    cv2.putText(frame, text, (startX, y),
-                            cv2.FONT_HERSHEY_SIMPLEX, 0.45, (0, 0, 255), 2)
+                elif int(proba*100)<40:
+                    text="Unknown Person!"
+                else:
+                    text="Need a closure look"
+                    
+                y = startY - 10 if startY - 10 > 10 else startY + 10
+                cv2.rectangle(frame, (startX, startY), (endX, endY),
+                        (0, 0, 255), 2)
+                cv2.putText(frame, text, (startX, y),
+                        cv2.FONT_HERSHEY_SIMPLEX, 0.45, (0, 0, 255), 2)
         cv2.imshow("Frame", frame)
         
         '''
         # Collect all event until released
         with Listener(on_press = show) as listener:   
             listener.join()'''
-            
+        
         key=cv2.waitKey(0) &0xFF  
-        if key==ord("y"):
+        if key==ord('y'):
             con1=connect('attendance.db')
             cur1=con1.cursor()
-            string2="date"+str(current_time.date)
-            string1="update attendance set "+string2+"=1 total=total+1 where RollNumber="+name
+            string2="date"+str(current_time.day)
+            string1=f"update attendance set {string2}=1 where RollNumber=\'{name}\'"
             cur1.execute(string1)
             con1.commit()
             con1.close()
@@ -645,7 +669,7 @@ def show(key):
                 # Stop listener
                 con1=connect('attendance.db')
                 cur1=con1.cursor()
-                string1="update attendance set "+current_time.date+"=1 where RollNumber="+name
+                string1="update attendance set "+current_time.date+"=1 where RollNumber={}".format(name)
                 cur1.execute(string1)
                 con1.commit()
                 con1.close()
@@ -666,6 +690,7 @@ def report():
     Button(newWindow,text="Submit",command=get_frame).place(x=230,y=150)
 def get_frame():
     newWindow.destroy()
+    global newWindow1
     newWindow1=Toplevel(root)
     newWindow1.title("attendance Report")
  
@@ -673,6 +698,7 @@ def get_frame():
     newWindow1.geometry("1080x700+10+10")
     newWindow1.minsize(1080,700)
     newWindow1.maxsize(1080,700)
+    global Details_Frame
     Details_Frame=Frame(newWindow1,bd=4,relief=RIDGE,bg="mint cream")
     Details_Frame.place(x=10,y=10,width=1040,height=650)
     if check_var.get()=="Daily":
@@ -713,7 +739,7 @@ def get_frame():
     #Table frame
     global Attendance_table
     Table_Frame=Frame(Details_Frame,bd=4,relief=RIDGE,bg="mint cream")
-    Table_Frame.place(x=10,y=70,width=1000,height=550)
+    Table_Frame.place(x=10,y=120,width=1000,height=530)
     scroll_x=Scrollbar(Table_Frame,orient=HORIZONTAL)
     scroll_y=Scrollbar(Table_Frame,orient=VERTICAL)
     Attendance_table=ttk.Treeview(Table_Frame,columns=("RollNo","Name","Branch","Year","Email","Attendance"),xscrollcommand=scroll_x.set,yscrollcommand=scroll_y.set)
@@ -747,18 +773,23 @@ def get_frame():
     
 def get_report():
     if check_var.get()=="Daily": 
+        
         conn=connect("attendance.db")
         cur=conn.cursor()
         string2="date"+date_var.get()
         string1="SELECT RollNumber,Name,Branch,Year,mailid,"+string2+" FROM attendance"
         cur.execute(string1)
         rows=cur.fetchall()
+        string3="Attendance Report of "+date_var.get()+"-"+str(current_time.month)+"-"+str(current_time.year)
+        Label(Details_Frame,text=string3,font=("times new roman", 20, "bold")).grid(row=1,columnspan=5)
     else:
         conn=connect("attendance_month.db")
         cur=conn.cursor()
         string1="SELECT RollNumber,Name,Branch,Year,mailid,"+month_var.get()+" FROM attendance_month"
         cur.execute(string1)
         rows=cur.fetchall()
+        string3="Attendance Report of "+month_var.get()+"-"+str(current_time.year)
+        Label(Details_Frame,text=string3,font=("times new roman", 20, "bold")).grid(row=1,columnspan=5)
         
     if len(rows)!=0:
         Attendance_table.delete(*Attendance_table.get_children())
@@ -797,123 +828,135 @@ def train():
     frame1.pack_forget()
     frame2.pack()
 def train_data():
-    content=Label(frame2,text="Training a Model....",font=("times new roman", 20, "bold")).place(x=350,y=400)
-    progress['value'] = 20
-    root.update_idletasks()
-    time.sleep(1)
-    progress['value'] = 40
-    root.update_idletasks()
-    time.sleep(1)
-    dataset = "dataset"
+    conn=connect("student.db")
+    cur=conn.cursor()
+    sql_query="select count(*) from student"
+    cur.execute(sql_query)
+    p=cur.fetchall()
+    conn.commit()
+    conn.close()
+    if p[0][0]<2:
+        messagebox.showinfo("Info","Atleast two data entries are needed")
+    else:
+    
+    
+        content=Label(frame2,text="Training a Model....",font=("times new roman", 20, "bold")).place(x=350,y=400)
+        progress['value'] = 20
+        root.update_idletasks()
+        time.sleep(1)
+        progress['value'] = 40
+        root.update_idletasks()
+        time.sleep(1)
+        dataset = "dataset"
 
-    embeddingFile = "output/embeddings.pickle" #initial name for embedding file
-    embeddingModel = "openface_nn4.small2.v1.t7" #initializing model for embedding Pytorch
+        embeddingFile = "output/embeddings.pickle" #initial name for embedding file
+        embeddingModel = "openface_nn4.small2.v1.t7" #initializing model for embedding Pytorch
 
-    #initialization of caffe model for face detection
-    prototxt = "model\\deploy.prototxt"
-    model =  "model\\res10_300x300_ssd_iter_140000.caffemodel"
+        #initialization of caffe model for face detection
+        prototxt = "model\\deploy.prototxt"
+        model =  "model\\res10_300x300_ssd_iter_140000.caffemodel"
 
-    #loading caffe model for face detection
-    #detecting face from Image via Caffe deep learning
-    detector = cv2.dnn.readNetFromCaffe(prototxt, model)
+        #loading caffe model for face detection
+        #detecting face from Image via Caffe deep learning
+        detector = cv2.dnn.readNetFromCaffe(prototxt, model)
 
-    #loading pytorch model file for extract facial embeddings
-    #extracting facial embeddings via deep learning feature extraction
-    embedder = cv2.dnn.readNetFromTorch(embeddingModel)
+        #loading pytorch model file for extract facial embeddings
+        #extracting facial embeddings via deep learning feature extraction
+        embedder = cv2.dnn.readNetFromTorch(embeddingModel)
 
-    #gettiing image paths
-    imagePaths = list(paths.list_images(dataset))
+        #gettiing image paths
+        imagePaths = list(paths.list_images(dataset))
 
-    #initialization
-    knownEmbeddings = []
-    knownNames = []
-    total = 0
-    conf = 0.5
+        #initialization
+        knownEmbeddings = []
+        knownNames = []
+        total = 0
+        conf = 0.9
 
-    #we start to read images one by one to apply face detection and embedding
-    for (i, imagePath) in enumerate(imagePaths):
-        #print("Processing image {}/{}".format(i + 1,len(imagePaths)))
-        name = imagePath.split(os.path.sep)[-2]
-        image = cv2.imread(imagePath)
-        image = imutils.resize(image, width=600)
-        (h, w) = image.shape[:2]
-        #converting image to blob for dnn face detection
-        imageBlob = cv2.dnn.blobFromImage(
-            cv2.resize(image, (300, 300)), 1.0, (300, 300),(104.0, 177.0, 123.0), swapRB=False, crop=False)
+        #we start to read images one by one to apply face detection and embedding
+        for (i, imagePath) in enumerate(imagePaths):
+            #print("Processing image {}/{}".format(i + 1,len(imagePaths)))
+            name = imagePath.split(os.path.sep)[-2]
+            image = cv2.imread(imagePath)
+            image = imutils.resize(image, width=600)
+            (h, w) = image.shape[:2]
+            #converting image to blob for dnn face detection
+            imageBlob = cv2.dnn.blobFromImage(
+                cv2.resize(image, (300, 300)), 1.0, (300, 300),(104.0, 177.0, 123.0), swapRB=False, crop=False)
 
-        #setting input blob image
-        detector.setInput(imageBlob)
-        #prediction the face
-        detections = detector.forward()
+            #setting input blob image
+            detector.setInput(imageBlob)
+            #prediction the face
+            detections = detector.forward()
 
-        if len(detections) > 0:
-            i = np.argmax(detections[0, 0, :, 2])
-            confidence = detections[0, 0, i, 2]
+            if len(detections) > 0:
+                i = np.argmax(detections[0, 0, :, 2])
+                confidence = detections[0, 0, i, 2]
 
-            if confidence > conf:
-                #ROI range of interest
-                box = detections[0, 0, i, 3:7] * np.array([w, h, w, h])
-                (startX, startY, endX, endY) = box.astype("int")
-                face = image[startY:endY, startX:endX]
-                (fH, fW) = face.shape[:2]
+                if confidence > conf:
+                    #ROI range of interest
+                    box = detections[0, 0, i, 3:7] * np.array([w, h, w, h])
+                    (startX, startY, endX, endY) = box.astype("int")
+                    face = image[startY:endY, startX:endX]
+                    (fH, fW) = face.shape[:2]
 
-                if fW < 20 or fH < 20:
-                    continue
-                #image to blob for face
-                faceBlob = cv2.dnn.blobFromImage(face, 1.0 / 255, (96, 96), (0, 0, 0), swapRB=True, crop=False)
-                #facial features embedder input image face blob
-                embedder.setInput(faceBlob)
-                vec = embedder.forward()
-                knownNames.append(name)
-                knownEmbeddings.append(vec.flatten())
-                total += 1
+                    if fW < 20 or fH < 20:
+                        continue
+                    #image to blob for face
+                    faceBlob = cv2.dnn.blobFromImage(face, 1.0 / 255, (96, 96), (0, 0, 0), swapRB=True, crop=False)
+                    #facial features embedder input image face blob
+                    embedder.setInput(faceBlob)
+                    vec = embedder.forward()
+                    knownNames.append(name)
+                    knownEmbeddings.append(vec.flatten())
+                    total += 1
 
-    print("Embedding:{0} ".format(total))
-    data = {"embeddings": knownEmbeddings, "names": knownNames}
-    f = open(embeddingFile, "wb")
-    f.write(pickle.dumps(data))
-    f.close()
-    print("Process Completed")
-    #progress['value'] = 50
-    root.update_idletasks()
-    time.sleep(1)
-    #initilizing of embedding & recognizer
-    embeddingFile = "output/embeddings.pickle"
-    #New & Empty at initial
-    recognizerFile = "output/recognizer.pickle"
-    labelEncFile = "output/le.pickle"
+        print("Embedding:{0} ".format(total))
+        data = {"embeddings": knownEmbeddings, "names": knownNames}
+        f = open(embeddingFile, "wb")
+        f.write(pickle.dumps(data))
+        f.close()
+        print("Process Completed")
+        #progress['value'] = 50
+        root.update_idletasks()
+        time.sleep(1)
+        #initilizing of embedding & recognizer
+        embeddingFile = "output/embeddings.pickle"
+        #New & Empty at initial
+        recognizerFile = "output/recognizer.pickle"
+        labelEncFile = "output/le.pickle"
 
-    print("Loading face embeddings...")
-    data = pickle.loads(open(embeddingFile, "rb").read())
+        print("Loading face embeddings...")
+        data = pickle.loads(open(embeddingFile, "rb").read())
 
-    print("Encoding labels...")
-    labelEnc = LabelEncoder()
-    labels = labelEnc.fit_transform(data["names"])
+        print("Encoding labels...")
+        labelEnc = LabelEncoder()
+        labels = labelEnc.fit_transform(data["names"])
 
 
-    print("Training model...")
-    recognizer = SVC(C=1.0, kernel="linear", probability=True)
-    recognizer.fit(data["embeddings"], labels)
+        print("Training model...")
+        recognizer = SVC(C=1.0, kernel="linear", probability=True)
+        recognizer.fit(data["embeddings"], labels)
 
-    f = open(recognizerFile, "wb")
-    f.write(pickle.dumps(recognizer))
-    f.close()
+        f = open(recognizerFile, "wb")
+        f.write(pickle.dumps(recognizer))
+        f.close()
 
-    f = open(labelEncFile, "wb")
-    f.write(pickle.dumps(labelEnc))
-    f.close()
+        f = open(labelEncFile, "wb")
+        f.write(pickle.dumps(labelEnc))
+        f.close()
 
-    progress['value'] = 60
-    root.update_idletasks()
-    time.sleep(1)
-    progress['value'] = 80
-    root.update_idletasks()
-    time.sleep(1)
-    progress['value'] = 100
-    time.sleep(1)
-    content=Label(frame2,text="Training Completed Successfully!",font=("times new roman", 20, "bold")).place(x=350,y=400)
-    messagebox.showinfo("Success","Training completed Successfully!")
-    progress['value']=0
+        progress['value'] = 60
+        root.update_idletasks()
+        time.sleep(1)
+        progress['value'] = 80
+        root.update_idletasks()
+        time.sleep(1)
+        progress['value'] = 100
+        time.sleep(1)
+        content=Label(frame2,text="Training Completed Successfully!",font=("times new roman", 20, "bold")).place(x=350,y=400)
+        messagebox.showinfo("Success","Training completed Successfully!")
+        progress['value']=0
     frame2.pack_forget()
     frame1.pack()
 
@@ -924,16 +967,16 @@ Admin_id=""
 Admin_pass=""
 
 def Login():
-    global login_by
+    
     lid1=lid.get()
     lpass1=lpass.get()
-    print(lid1,lpass1)
+    #print(lid1,lpass1)
     con3=connect('login.db')
     cur3=con3.cursor()
     cur3.execute("select * from login")
     p=cur3.fetchall()
-    p
-    print(p[0][0],p[0][1])
+    
+    #print(p[0][0],p[0][1])
     con3.commit()
     con3.close()
     if(lid1==p[0][0]and lpass1==p[0][1]):
@@ -941,7 +984,11 @@ def Login():
         Proceed_menu()
     else:
         messagebox.showerror("Invalid Login","Incorrect userId or Password")
+        lid.set("")
+        lpass.set("")
 def Proceed_menu():
+    lid.set("")
+    lpass.set("")
     f_login.pack_forget()
     frame1.pack(pady=20)
 
@@ -1013,7 +1060,7 @@ e1 =Entry(f_login,textvariable=lid,width="28").grid(column=1,row=2)
 lb2 =Label(f_login,text="Enter Password: ",font="lucida 10 bold").grid(column=0,row=3,pady="4")
 
 lpass=StringVar()
-e2=Entry(f_login,textvariable=lpass,width="28").grid(column=1,row=3)
+e2=Entry(f_login,textvariable=lpass,width="28",show='*').grid(column=1,row=3)
 btn=Button(f_login,text="login",bg="green",fg="white",width="10",font="lucida 10 bold",command=Login)
 btn.grid(columnspan=3,row=5,pady="10")
 
@@ -1051,7 +1098,7 @@ button2.grid(row=1, column=1, padx=30, pady=15)
 photo3=Image.open("GUI/timetable.png")
 photo3=photo3.resize((200, 200), Image.ANTIALIAS)
 photo3=ImageTk.PhotoImage(photo3)
-button3=Button(frame1, text="attendance Report", image=photo3,
+button3=Button(frame1, text="Attendance Report", image=photo3,
                compound=TOP, font=("times new roman", 15, "bold"), command=report)
 button3.grid(row=1, column=2, padx=30, pady=15)
 photo4=Image.open("GUI/passwordchange.jpg")
@@ -1063,7 +1110,7 @@ button4.grid(row=1, column=3, padx=30, pady=15)
 photo5=Image.open("GUI/facedetect.jpg")
 photo5=photo5.resize((200, 200), Image.ANTIALIAS)
 photo5=ImageTk.PhotoImage(photo5)
-button5=Button(frame1, text="Face Detection", image=photo5, compound=TOP, font=(
+button5=Button(frame1, text="Attendance Generator", image=photo5, compound=TOP, font=(
     "times new roman", 15, "bold"), command=detect)
 button5.grid(row=2, column=0, padx=30, pady=15)
 photo6=Image.open("GUI/holiday.jpg")
