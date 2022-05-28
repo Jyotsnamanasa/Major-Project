@@ -558,15 +558,21 @@ def holidays():
     newWindow.minsize(1080, 700)
     Manage_Frame=Frame(newWindow,bd=4,relief=RIDGE,bg="mint cream")
     Manage_Frame.place(x=10,y=10,width=450,height=650)
-    m_title=Label(Manage_Frame,text="Add a holiday",bg="mint cream",fg="black",font=("times new roman",15,"bold"))
-    m_title.pack(padx=20,pady=100)
+    Label(Manage_Frame,text="Add a Holiday",fg="black",font=("times new roman",20,"bold"),bg="mint cream").grid(row=0,columnspan=4)
+    m_title=Label(Manage_Frame,text="Select Date",bg="mint cream",fg="black",font=("times new roman",15,"bold"))
+    m_title.grid(row=1,column=0,padx=15,pady=20)
     global cal
     cal = Calendar(Manage_Frame, selectmode = 'day',
                     year = 2022, month = 5,
                     day = 1)
         
-    cal.pack(pady = 20)
-    Button(Manage_Frame, text = "Add Date",command = add_date).pack(pady = 10)
+    cal.grid(row=1,column=2,padx=15,pady=20)
+    
+    Label(Manage_Frame,text="Select Type",fg="black",font=("times new roman",15,"bold"),bg="mint cream").grid(row=2,column=0,padx=15,pady=20)
+    combo_check1=ttk.Combobox(Manage_Frame,textvariable=type_var,font=("times new roman",13,"bold"),state="readonly")
+    combo_check1['values']=("Holiday","Half Day","Suspend")
+    combo_check1.grid(row=2,column=2,padx=15,pady=20)
+    Button(Manage_Frame, text = "Add Date",command = add_date).grid(row=5,columnspan=4,pady=20)
     
     
 
@@ -581,7 +587,7 @@ def holidays():
     Table_Frame.place(x=10,y=70,width=580,height=550)
     scroll_x=Scrollbar(Table_Frame,orient=HORIZONTAL)
     scroll_y=Scrollbar(Table_Frame,orient=VERTICAL)
-    holiday_table=ttk.Treeview(Table_Frame,columns=("Day","Month","Year"),xscrollcommand=scroll_x.set,yscrollcommand=scroll_y.set)
+    holiday_table=ttk.Treeview(Table_Frame,columns=("Day","Month","Year","Type"),xscrollcommand=scroll_x.set,yscrollcommand=scroll_y.set)
     scroll_x.pack(side=BOTTOM,fill=X)
     scroll_y.pack(side=RIGHT,fill=Y)
     scroll_x.config(command=holiday_table.xview)
@@ -589,13 +595,14 @@ def holidays():
     holiday_table.heading("Day",anchor=CENTER,text="Day")
     holiday_table.heading("Month",anchor=CENTER,text="Month")
     holiday_table.heading("Year",anchor=CENTER,text="Year")
+    holiday_table.heading("Type",anchor=CENTER,text="Type")
     
     
     holiday_table['show']="headings"
-    holiday_table.column("Day",anchor=CENTER,width=150)
-    holiday_table.column("Month",anchor=CENTER,width=150)
-    holiday_table.column("Year",anchor=CENTER,width=150)
-    
+    holiday_table.column("Day",anchor=CENTER,width=100)
+    holiday_table.column("Month",anchor=CENTER,width=100)
+    holiday_table.column("Year",anchor=CENTER,width=100)
+    holiday_table.column("Type",anchor=CENTER,width=100)
     
     holiday_table.pack(fill=BOTH,expand=1)
 
@@ -617,14 +624,19 @@ def fetch_holiday_data():
     conn.close()
     
 def add_date():
-    c=cal.get_date().split("/")
-    con2=connect('holiday.db')
-    cur2=con2.cursor()
-    cur2.execute("insert into holiday values(?,?,?);",(c[1],c[0],c[2]))
-    con2.commit()
-    con2.close()
-    messagebox.showinfo("success","Date entered successfully!",parent=newWindow)
-    fetch_holiday_data()
+    if type_var.get()=='':
+        messagebox.showerror("Error","All feilds need to be filled")
+    else:
+        c=cal.get_date().split("/")
+        p=messagebox.askquestion("Add Date",f"Do you really want to add {cal.get_date()}? ",parent=newWindow)
+        if p=='yes':
+            con2=connect('holiday.db')
+            cur2=con2.cursor()
+            cur2.execute("insert into holiday values(?,?,?,?);",(c[1],c[0],c[2],type_var.get()))
+            con2.commit()
+            con2.close()
+            messagebox.showinfo("success","Date entered successfully!",parent=newWindow)
+            fetch_holiday_data()
 def get_update():
     date1=date.today()
     print(date1)
@@ -633,11 +645,20 @@ def get_update():
     cur2=con2.cursor()
     cur2.execute(f"select * from holiday where date_holiday={d[2]} and month={d[1]} and year=22")
     p=cur2.fetchall()
-    global status1
+    global status1,hours
     if len(p)==0:
         status1=""
     else:
-        status1="Holiday"
+        if p[0][3]=='Holiday':
+            status1="Holiday"
+        elif p[0][3]=='suspend':
+            status1='Suspend'
+            hours=3
+        elif p[0][3]=='Half Day':
+            status1='Half Day'
+            hours=5
+        else:
+            hours=7
     con=connect("attendance.db")
     cur=con.cursor()
     date1=date.today()
@@ -652,7 +673,7 @@ def get_update():
         for row in rows:
             string1=f"insert into attendance values(\'{row[0]}\',\'{row[1]}\',\'{row[2]}\',\'{row[3]}\',\'{row[4]}\',\'{date1}\','-','-',\'{status1}\')"
             cur.execute(string1)
-    elif len(p)<len(rows):
+    '''elif len(p)<len(rows):
         rollnum=[]
         for i in p:
             rollnum.append(i[0])
@@ -660,7 +681,7 @@ def get_update():
             
                 if row[0] not in rollnum:
                     string1=f"insert into attendance values(\'{row[0]}\',\'{row[1]}\',\'{row[2]}\',\'{row[3]}\',\'{row[4]}\',{date1},'-','-'qqq,\'{status1}\')"
-                    cur.execute(string1)
+                    cur.execute(string1)'''
     cur.execute(f"select * from attendance where day={date1}")
     p=cur.fetchall()
     print(p)
@@ -761,7 +782,7 @@ def detect():
                             status="present"
                             cur1.execute(f"select * from attendance where RollNumber=\'{roll_no}\' and day=\'{date1}\' and time_in!='-'")
                             p=cur1.fetchall()
-                            if len(p)==0:
+                            if len(p)==0 and str(time1)>'08:00':
                                 string3=f"update attendance set time_in=\'{time1}\' where RollNumber=\'{roll_no}\' and day=\'{date1}\'"
                                 #string1=f"insert into attendance values(\'{roll_no}\',\'{name}\',\'{branch}\',\'{year}\',\'{mailid}\',{date1},{time1},\'{status}\')"
                                 print(string3)
@@ -778,24 +799,26 @@ def detect():
                                 #print(t1)
                                 t1=int(t1[0][0].split(":")[0])
                                 t2=int(time1.split(":")[0])
-                                if t2-t1>4:
+                                if t2-t1>=hours:
                                     status="present"
+                                    count=1
                                 else:
                                     status="Early exit"
+                                    count=float("{:.2f}".format()((t2-t1)/hours))
                                 string3=f"update attendance set time_out=\'{time1}\',status=\'{status}\' where RollNumber=\'{roll_no}\' and day=\'{date1}\'"
                                 #string1=f"insert into attendance values(\'{roll_no}\',\'{name}\',\'{branch}\',\'{year}\',\'{mailid}\',{date1},{time1},\'{status}\')"
                                 print(string3)
                                 #string1=f"update attendance set {string2}=1 where RollNumber=\'{roll_no}\'"
                                 #cur1.execute(string3)
                                 cur1.execute(string3)
-                                if status=="present":
-                                    con2=connect('attendance_month.db')
-                                    cur2=con2.cursor()
-                                    month=int(str(date1).split("-")[1])
-                                    month=l[month-1]
-                                    cur2.execute(f"update attendance_month set {month}={month}+1 where RollNumber=\'{roll_no}\'")
-                                    con2.commit()
-                                    con2.close()
+                               
+                                con2=connect('attendance_month.db')
+                                cur2=con2.cursor()
+                                month=int(str(date1).split("-")[1])
+                                month=l[month-1]
+                                cur2.execute(f"update attendance_month set {month}={month}+{count} where RollNumber=\'{roll_no}\'")
+                                con2.commit()
+                                con2.close()
                                 speak("Thank you!")
                                 time.sleep(15)
                             if str(time1)>'17:30':
@@ -1162,12 +1185,12 @@ con.commit()
 con.close() 
 con2=connect('holiday.db')
 cur2=con2.cursor()
-cur2.execute("CREATE TABLE IF NOT EXISTS holiday(date_holiday int NOT NULL,month int NOT NULL,year int NOT NULL)")
+cur2.execute("CREATE TABLE IF NOT EXISTS holiday(date_holiday int NOT NULL,month int NOT NULL,year int NOT NULL,type text NOT NULL)")
 con2.commit()
 con2.close()
 con1=connect('attendance_month.db')
 cur1=con1.cursor()
-cur1.execute("CREATE TABLE IF NOT EXISTS attendance_month(RollNumber text PRIMARY KEY,Name text NOT NULL,Branch text NOT NULL,Year text NOT NULL, mailid text NOT NULL,Jan int default 0,Feb int default 0,March int default 0,April int default 0,May int default 0,June int default 0,July int default 0,Aug int default 0,Sept int default 0,Oct int default 0,Nov int default 0,Dec int default 0);")
+cur1.execute("CREATE TABLE IF NOT EXISTS attendance_month(RollNumber text PRIMARY KEY,Name text NOT NULL,Branch text NOT NULL,Year text NOT NULL, mailid text NOT NULL,Jan DOUBLE(2,2) default 0,Feb DOUBLE(2,2) default 0,March DOUBLE(2,2) default 0,April DOUBLE(2,2) default 0,May DOUBLE(2,2) default 0,June DOUBLE(2,2) default 0,July DOUBLE(2,2) default 0,Aug DOUBLE(2,2) default 0,Sept DOUBLE(2,2) default 0,Oct DOUBLE(2,2) default 0,Nov DOUBLE(2,2) default 0,Dec DOUBLE(2,2) default 0);")
 con1.commit()
 con1.close()
 con1=connect('attendance.db')
@@ -1211,6 +1234,8 @@ date_var2=StringVar()
 date_var1=StringVar()
 month_var=StringVar()
 current_time = datetime.datetime.now()
+type_var=StringVar()
+hour_var=StringVar()
 #login Page Begin
 
 
